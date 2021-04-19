@@ -8,47 +8,35 @@ const Modal = {
     }
 }
 
-console.log("Hello world")
-
 function openCloseModal() {
     document.querySelector('.modal-overlay').classList.toggle("active") // TOGGLE REMOVE E ADICIONA A CLASSE "ACTIVE"
 }
 
-
-const transactionsValues = [{
-    id: 1,
-    description: "Luz",
-    amount: -50000,
-    date: '23/01/2021'
-}, {
-    id: 2,
-    description: "CriaçãoWebsite",
-    amount: 500000,
-    date: '23/01/2021'
-
-},
-{
-    id: 3,
-    description: "Internet",
-    amount: -20000,
-    date: '23/01/2021'
-},
-{
-    id: 4,
-    description: "App",
-    amount: 20000,
-    date: '21/01/2021'
-}]
+const Storage = {
+    get(){
+        return JSON.parse(localStorage.getItem("dev.finances:transactions"))  || [] //  JSON PARSE TRANSFORMA STRING EM ARRAY OU OBJETO
+    },
+    set(transactions){
+        localStorage.setItem("dev.finances:transactions", JSON.stringify(transactions)) // JSON.STRINGIFY TRANSFORMA ARRAY EM STRING
+    }
+}
 
 
 const transactionsActions = {
-    all: transactionsValues,
+    all: Storage.get(),
 
 
     add(transaction){
         transactionsActions.all.push(transaction)
 
         App.reload()
+    },
+
+    remove(index){
+        transactionsActions.all.splice(index,1)
+
+        App.reload()
+
     },
 
 
@@ -87,12 +75,14 @@ const DOM = {
 
     addTransaction(transaction, index){   
         const tr = document.createElement('tr') // CRIANDO O ELEMENTO TR
-        tr.innerHTML = DOM.innerHTMLTransaction(transaction) // INSERINDO DENTRO DA TAG TR O HTML
+        tr.innerHTML = DOM.innerHTMLTransaction(transaction, index) // INSERINDO DENTRO DA TAG TR O HTML
+
+        tr.dataset.index = index
 
         DOM.transactionsContainer.appendChild(tr)
 
     },
-    innerHTMLTransaction(transaction){
+    innerHTMLTransaction(transaction, index){
         const CSSclass = transaction.amount > 0 ? "Income" : "expense"  
        
         const amount = Utils.formatCurrency(transaction.amount)
@@ -102,7 +92,7 @@ const DOM = {
         <td class="${CSSclass}">${amount}</td>
         <td class="date">${transaction.date}</td>
         <td>
-          <img src="/assets/minus.svg" alt="remover transação" />
+          <img  onclick="transactionsActions.remove(${index})" src="/assets/minus.svg" alt="remover transação" />
         </td>
         `
         return html
@@ -124,6 +114,19 @@ const DOM = {
 
 
 const Utils = {
+    formatAmount(value){
+        value = Number(value) * 100
+        
+        return value
+
+    },
+
+    formatDate(date){
+        const splittedDate = date.split("-") // SPLIT VAI cortar a data no - e cada parte vai ser um array
+        return `${splittedDate[2]}/${splittedDate[1]}/${splittedDate[0]}`
+    },
+
+
     formatCurrency(value){
         const signal = Number(value) < 0 ? "-" : ""
 
@@ -138,16 +141,106 @@ const Utils = {
         
         return signal + value
     }
+
+    
+}
+
+
+const Form = {
+
+    // CAPTURANDO OS DADOS DOS INPUTS DO FORM
+    description: document.querySelector('input#description'),
+    date: document.querySelector('input#date'),
+    amount: document.querySelector('input#amount'),
+
+
+    // FUNÇÃO QUE CAPTURA OS VALORES(VALUES) DOS CAMPOS
+    getValues(){
+        return {
+            description: Form.description.value,
+            amount: Form.amount.value,
+            date: Form.date.value
+        }
+    },
+
+
+    
+    validateFields(){
+
+        // DESESTRUTURANDO O OBJETO
+        const {
+            description,
+            amount,
+            date
+        } = Form.getValues()
+
+
+            if(description.trim() === "" ||
+             amount.trim() === "" ||
+              date.trim() === ""){
+                  throw new Error("Por favor, preencha todos os campos")
+              }
+    },
+
+    formatValues(){
+        let {
+            description,
+            amount,
+            date
+        } = Form.getValues()
+
+        amount = Utils.formatAmount(amount)
+
+        date = Utils.formatDate(date)
+
+        return{
+            description,
+            amount,
+            date
+
+        }
+    },
+
+    clearFields(){
+        Form.description.value = ""
+        Form.amount.value = ""
+        Form.date.value = ""
+    },
+
+    submit(event){
+        event.preventDefault()
+
+        try{
+           Form.validateFields()
+           const transaction = Form.formatValues()
+           transactionsActions.add(transaction)
+           Form.clearFields()
+           openCloseModal()
+        
+        } catch(error){
+            alert(error.message)
+        }
+
+       
+      
+        // salvar
+        // limpar os campos do formulário
+        // modal feche
+        // atualizar a aplicação 
+    }
+
 }
 
 
 const App = {
     init(){
-        transactionsActions.all.forEach(transaction => {
-            DOM.addTransaction(transaction)
+        transactionsActions.all.forEach((transaction, index) => {
+            DOM.addTransaction(transaction, index)
         })
         
         DOM.updateBalance()
+
+        Storage.set(transactionsActions.all)
         
 
     },
@@ -162,10 +255,29 @@ const App = {
 App.init()
 
 
-transactionsActions.add({
-    id: 23,
-    description: "alo",
-    amount: 200,
-    date: "12/12/2001"
-})
 
+
+// [{
+   
+//     description: "Luz",
+//     amount: -50000,
+//     date: '23/01/2021'
+// }, {
+    
+//     description: "CriaçãoWebsite",
+//     amount: 500000,
+//     date: '23/01/2021'
+
+// },
+// {
+   
+//     description: "Internet",
+//     amount: -20000,
+//     date: '23/01/2021'
+// },
+// {
+    
+//     description: "App",
+//     amount: 20000,
+//     date: '21/01/2021'
+// }]
